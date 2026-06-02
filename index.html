@@ -110,8 +110,13 @@ function listenProfessionals() {
   onValue(r, snap => {
     professionals = [];
     if (snap.exists()) snap.forEach(child => professionals.push({ _key: child.key, ...child.val() }));
+    // Always render regardless of active view
     renderProfissionais();
     populateProfessionalSelects();
+    // Also refresh desempenho if active, since it depends on professionals
+    const active = document.querySelector('.view.active')?.id?.replace('view-','');
+    if(active === 'desempenho') renderDesempenho();
+    if(active === 'analytics') renderAnalytics();
   });
 }
 
@@ -341,13 +346,18 @@ window.saveProfessional = async function(){
       document.getElementById('prof-save-btn').textContent = 'Salvar profissional';
       notify('Profissional atualizado ✓');
     } else {
-      await saveProfessionalToDb(data);
+      const newKey = await saveProfessionalToDb(data);
+      // Immediately add to local array so table updates without waiting Firebase callback
+      professionals.push({ _key: newKey, ...data });
       notify('Profissional salvo ✓');
     }
     document.getElementById('p-nome').value='';
     document.getElementById('p-email').value='';
     document.getElementById('p-cv').value='10';
     document.getElementById('p-ca').value='5';
+    // Force immediate UI update
+    renderProfissionais();
+    populateProfessionalSelects();
   } catch(e){ notify('Erro ao salvar: ' + e.message,'err'); }
 }
 
