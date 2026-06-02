@@ -30,7 +30,7 @@ button,input,select,textarea{font:inherit}input,select,textarea{width:100%;paddi
 <div id="authView"><div class="auth-card"><h1>GestãoPro</h1><p>Login com Google e banco no Firebase. Cada usuário acessa conforme o perfil liberado pelo administrador.</p><button class="btn btn-google" id="btnGoogle"><span class="ms">login</span> Entrar com Google</button><div class="small" style="margin-top:14px">Somente contas autorizadas conseguem entrar.</div><div id="authMsg" class="small" style="margin-top:12px"></div></div></div>
 <div id="appView" style="display:none">
 <div class="layout">
-<aside id="sidebar"><div class="logo">Gestão<span style="color:#fff;font-weight:300">Pro</span></div><nav>
+<aside id="sidebar" data-nav='1'><div class="logo">Gestão<span style="color:#fff;font-weight:300">Pro</span></div><nav>
 <a class="active" onclick="showPage('dashboard',this)"><span><span class="ms">dashboard</span></span><span>Dashboard</span></a>
 <a onclick="showPage('agenda',this)"><span><span class="ms">calendar_month</span></span><span>Agenda</span></a>
 <a onclick="showPage('ordens',this)"><span><span class="ms">assignment</span></span><span>Ordens</span></a>
@@ -68,7 +68,7 @@ const $ = s => document.querySelector(s), toast = m => { const t=$('#toast'); t.
 function badge(v){ const map={Concluído:'b-green',Agendado:'b-blue','Em Execução':'b-yellow',Cancelado:'b-red',Orçado:'b-gray',Aprovado:'b-cyan',Ativo:'b-green',Inativo:'b-gray',Cliente:'b-blue',Parceiro:'b-cyan',Ambos:'b-green',admin:'b-red',gestor:'b-blue',executor:'b-cyan',vendedor:'b-green'}; return `<span class="badge ${map[v]||'b-gray'}">${v}</span>`; }
 function fmtMoney(n){ return 'R$ ' + Number(n||0).toLocaleString('pt-BR'); } function initials(n){ return (n||'').split(' ').filter(Boolean).map(x=>x[0]).join('').slice(0,2).toUpperCase(); } function rid(p){ return p+'-'+Math.random().toString(36).slice(2,7).toUpperCase(); }
 window.openModal = id => document.getElementById(id).classList.add('open'); window.closeModal = id => document.getElementById(id).classList.remove('open');
-window.showPage = async (id, el) => { if(!(await gate(id))) return; document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById('page-'+id).classList.add('active'); document.getElementById('pageTitle').textContent = el ? el.innerText.trim() : id; document.querySelectorAll('#sidebar nav a').forEach(a=>a.classList.remove('active')); if(el) el.classList.add('active'); };
+window.showPage = (id, el) => { const go = async()=>{ if(!(await gate(id))) return; document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById('page-'+id).classList.add('active'); document.getElementById('pageTitle').textContent = el ? el.innerText.trim() : id; document.querySelectorAll('#sidebar nav a').forEach(a=>a.classList.remove('active')); if(el) el.classList.add('active'); }; go(); };
 window.refreshAll = () => loadAll();
 $('#btnGoogle').onclick = async ()=>{ try{ await signInWithPopup(auth, provider); } catch(e){ $('#authMsg').textContent = e.message; } };
 window.signOutApp = async ()=> signOut(auth);
