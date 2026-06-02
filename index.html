@@ -1,4 +1,3 @@
-[gestaopro_v5.html](https://github.com/user-attachments/files/28488108/gestaopro_v5.html)
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -87,39 +86,55 @@ window.criarAcessoFuncionario = async () => {
   if(!nome || !email || !senha){ notify('Preencha todos os campos obrigatórios','err'); return; }
   if(senha.length < 6){ notify('A senha deve ter pelo menos 6 caracteres','err'); return; }
 
-  try {
-    // Create Firebase Auth account
-    await createUserWithEmailAndPassword(auth, email, senha);
-    // Sign back in as gestor (creating account signs in as the new user)
-    // We use a secondary app instance trick — instead, just save the prof data
-    // The new user will be signed in briefly, so we sign back out and back in with Google
-    await signOut(auth);
+  // Step 1: Save professional to DB FIRST (while gestor is still logged in)
+  const profData = { nome, email, comissaoVenda: cv, comissaoAplicacao: ca };
+  const cleaned = {};
+  for(const [k,v] of Object.entries(profData)) if(v !== undefined && v !== null) cleaned[k] = v;
 
-    // Save professional to DB (will be saved when gestor logs back in via onValue)
-    // We pre-save using REST-like push directly
-    const profData = { nome, email, comissaoVenda: cv, comissaoAplicacao: ca };
-    const cleaned = {};
-    for(const [k,v] of Object.entries(profData)) if(v !== undefined && v !== null) cleaned[k] = v;
+  try {
+    // Save to DB first — gestor still authenticated here
     const newRef = push(ref(db, 'shared/professionals'));
     await set(newRef, cleaned);
 
-    // Re-login as gestor
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    // Step 2: Create Firebase Auth account using REST API
+    // This avoids signing out the current gestor session
+    const apiKey = "AIzaSyBHJpRU1RFeUlshuSo1h-TiLvqpZPvUis8";
+    const resp = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: senha, returnSecureToken: false })
+      }
+    );
+    const result = await resp.json();
 
-    // Close modal and notify
+    if(result.error) {
+      // If auth account creation fails, remove the professional we just saved
+      await remove(newRef);
+      const msgs = {
+        'EMAIL_EXISTS': 'Este e-mail já possui uma conta de acesso.',
+        'INVALID_EMAIL': 'E-mail inválido.',
+        'WEAK_PASSWORD : Password should be at least 6 characters': 'Senha muito fraca (mínimo 6 caracteres).',
+      };
+      notify(msgs[result.error.message] || 'Erro ao criar conta: ' + result.error.message, 'err');
+      return;
+    }
+
+    // Success — update local array immediately
+    professionals.push({ _key: newRef.key, ...cleaned });
+    renderProfissionais();
+    populateProfessionalSelects();
+
+    // Close modal and clear fields
     document.getElementById('modal-criar-acesso').classList.remove('open');
     ['fa-nome','fa-email','fa-senha'].forEach(id => document.getElementById(id).value='');
     document.getElementById('fa-cv').value='10';
     document.getElementById('fa-ca').value='5';
     notify('Acesso criado e profissional cadastrado ✓');
+
   } catch(e) {
-    const msgs = {
-      'auth/email-already-in-use': 'Este e-mail já possui uma conta.',
-      'auth/invalid-email': 'E-mail inválido.',
-      'auth/weak-password': 'Senha muito fraca (mínimo 6 caracteres).',
-    };
-    notify(msgs[e.code] || 'Erro: ' + e.message, 'err');
+    notify('Erro: ' + e.message, 'err');
   }
 };
 
